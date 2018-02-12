@@ -1,0 +1,16 @@
+[package]
+categories = ["embedded", "no-std"]
+name = "dht22"
+version = "0.0.0"
+keywords = ["embedded-hal", "temperature", "humidity", "sensor"]
+
+[dependencies]
+cortex-m = "0.4.3"
+cortex-m-rt = { version = "0.3.12", features = ["abort-on-panic"] }
+cortex-m-semihosting = "0.2.0"
+embedded-hal = { git = "https://github.com/japaric/embedded-hal", branch = "io-2" }
+stm32f429x = { path = "../stm32f429x", features = ["rt"] }
+
+[profile.release]
+debug = 2
+lto = true
