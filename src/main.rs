@@ -236,19 +236,12 @@ fn main() {
 
             let mut dec = PulseWidthDecoder::new(input, [0usize; 40]);
             if dec.run() {
-                let avg_time = dec.total_time / dec.times.len();
-
-                write!(stdout, "Times:").unwrap();
-                for (i, time) in dec.times.iter().enumerate() {
-                    if i > 0 && i % 8 == 0 {
-                        write!(stdout, " |").unwrap();
-                    }
-                    write!(stdout, " {}", time).unwrap();
-                }
-                writeln!(stdout, " | AVG={}", avg_time).unwrap();
-                writeln!(stdout, "Bytes: {:?}", dec.to_bytes()).unwrap();
-                let sd = SensorData::from(dec.to_bytes());
-                writeln!(stdout, "Data: {:?}", sd).unwrap();
+                SensorData::from(dec.to_bytes())
+                    .map(|sd|
+                         writeln!(stdout, "Data: {:?}", sd).unwrap()
+                    );
+            } else {
+                writeln!(stdout, "No data!").unwrap()
             }
         });
     }
