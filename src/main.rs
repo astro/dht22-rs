@@ -34,18 +34,14 @@ impl<'a> IoPin for DHT22Pin<'a> {
     type Input = DHT22Input<'a>;
     type Output = DHT22Output<'a>;
 
-    fn as_input<R, F>(&mut self, f: F) -> R
-    where F: FnOnce(&Self::Input) -> R
-    {
-        self.gpio.moder.modify(|_, w| unsafe { w.moder0().bits(GPIO_MODER_INPUT) });
-        f(&DHT22Input { gpio: self.gpio })
+    fn into_input(self) -> Self::Input {
+        self.gpio.moder.modify(|_, w| w.moder0().bits(GPIO_MODER_INPUT));
+        DHT22Input { gpio: self.gpio }
     }
 
-    fn as_output<R, F>(&mut self, f: F) -> R
-    where F: FnOnce(&mut Self::Output) -> R
-    {
-        self.gpio.moder.modify(|_, w| unsafe { w.moder0().bits(GPIO_MODER_OUTPUT) });
-        f(&mut DHT22Output { gpio: self.gpio })
+    fn into_output(self) -> Self::Output {
+        self.gpio.moder.modify(|_, w| w.moder0().bits(GPIO_MODER_OUTPUT));
+        DHT22Output { gpio: self.gpio }
     }
 }
 
@@ -64,6 +60,21 @@ impl<'a> InputPin for DHT22Input<'a> {
         self.gpio.idr.read()
             .idr0()
             .bit_is_set()
+    }
+}
+
+impl<'a> IoPin for DHT22Input<'a> {
+    type Input = Self;
+    type Output = DHT22Output<'a>;
+
+    fn into_input(self) -> Self::Input {
+        self
+    }
+
+    fn into_output(self) -> Self::Output {
+        DHT22Pin {
+            gpio: self.gpio
+        }.into_output()
     }
 }
 
@@ -90,6 +101,21 @@ impl<'a> OutputPin for DHT22Output<'a> {
     fn set_high(&mut self) {
         self.gpio.bsrr
             .write(|w| w.bs0().set_bit())
+    }
+}
+
+impl<'a> IoPin for DHT22Output<'a> {
+    type Input = DHT22Input<'a>;
+    type Output = Self;
+
+    fn into_input(self) -> Self::Input {
+        DHT22Pin {
+            gpio: self.gpio
+        }.into_input()
+    }
+
+    fn into_output(self) -> Self::Output {
+        self
     }
 }
 
@@ -219,22 +245,21 @@ fn main() {
         w.gpiocen().set_bit()
     });
 
-    let mut pin = DHT22Pin::new(&p);
+    let mut pin_out = DHT22Pin::new(&p).into_output();
     loop {
-        pin.as_output(|out| {
-            out.set_low();
-            for _ in 0..20000 {
-                asm::nop();
-            }
-            out.set_high();
-        });
+        pin_out.set_low();
+        for _ in 0..20000 {
+            asm::nop();
+        }
+        pin_out.set_high();
 
-        pin.as_input(|input| {
-            while ! input.is_high() {}
-            while input.is_high() {}
-            while ! input.is_high() {}
+        let pin_in = pin_out.into_input();
+        while ! pin_in.is_high() {}
+        while pin_in.is_high() {}
+        while ! pin_in.is_high() {}
 
-            let mut dec = PulseWidthDecoder::new(input, [0usize; 40]);
+        {
+            let mut dec = PulseWidthDecoder::new(&pin_in, [0usize; 40]);
             if dec.run() {
                 SensorData::from(dec.to_bytes())
                     .map(|sd|
@@ -243,6 +268,8 @@ fn main() {
             } else {
                 writeln!(stdout, "No data!").unwrap()
             }
-        });
+        }
+
+        pin_out = pin_in.into_output();
     }
 }
