@@ -5,11 +5,11 @@ extern crate cortex_m;
 extern crate cortex_m_rt;
 extern crate cortex_m_semihosting;
 #[macro_use(exception, interrupt)]
-extern crate stm32f429x;
+extern crate stm32f429;
 extern crate embedded_hal;
 
 use cortex_m::asm;
-use stm32f429x::{Peripherals, CorePeripherals, GPIOC};
+use stm32f429::{Peripherals, CorePeripherals, GPIOC};
 use embedded_hal::digital::*;
 
 use core::fmt::Write;
